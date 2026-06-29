@@ -26,7 +26,6 @@ public class ActionLooper implements Runnable {
     private final String TAG = "ActionLooper";
     //AccessibilityService reference
     private final  ActionService service;
-    private final Intent intent;
 
     //Running flags
     private boolean isRunning;
@@ -55,64 +54,76 @@ public class ActionLooper implements Runnable {
     public ActionLooper(ActionService service){
         this.service = service;
         this.controller = SettingsController.getInstance(service);
-        this.intent = new Intent(service, FloatingMenuService.class);
-        intent.putExtra("loadedNotification",true);
 
     }
     @Override
     public void run() {
-        if(model_map==null) loadModels();
-        controller.reloadAllValues();
-        service.startService(intent);
+        try {
+            if(model_map==null) loadModels();
+            controller.reloadAllValues();
 
-        isRunning = true;
-        isPaused = true;
-        while (isRunning){
-            if(!isPaused){
-                try {
-                    Thread.sleep(controller.getCycleInterval());
-
-                    captureScreen();
-                    synchronized(lock){lock.wait(controller.getWaitTimeout());} // Wait for screenshot
-
-                    if(lastScreenShot != null){
-
-                        model_classifier.classify(lastScreenShot);
-                        Log.d(TAG,"run(): Class  " + model_classifier.getClassName(0) + " " + model_classifier.getScore(0) );
-
-                        if(controller.isValidClassification(model_classifier)){
-                            switch (model_classifier.getClassName(0)){
-                                case "mapScreen":
-                                    taskMapScreen();
-                                    break;
-                                case "pokestopScreen":
-                                    taskPokestopScreen();
-                                    break;
-                                case "encounterScreen":
-                                    taskEncounterScreen();
-                                    break;
-                                case "rewardScreen":
-                                    taskRewardScreen();
-                                    break;
-                                case "eggScreen":
-                                    taskEggScreen();
-                                    break;
-                                case "menusScreen":
-                                    taskMenusScreen();
-                                    break;
-                                default:
-                                    service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
-                                    break;
-                            }
-
+            if (FloatingMenuService.instance != null) {
+                service.mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (FloatingMenuService.instance != null) {
+                            FloatingMenuService.instance.onModelsLoaded();
                         }
                     }
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                });
+            }
+
+            isRunning = true;
+            isPaused = true;
+            while (isRunning){
+                if(!isPaused){
+                    try {
+                        Thread.sleep(controller.getCycleInterval());
+
+                        captureScreen();
+                        synchronized(lock){lock.wait(controller.getWaitTimeout());} // Wait for screenshot
+
+                        if(lastScreenShot != null){
+
+                            model_classifier.classify(lastScreenShot);
+                            Log.d(TAG,"run(): Class  " + model_classifier.getClassName(0) + " " + model_classifier.getScore(0) );
+
+                            if(controller.isValidClassification(model_classifier)){
+                                switch (model_classifier.getClassName(0)){
+                                    case "mapScreen":
+                                        taskMapScreen();
+                                        break;
+                                    case "pokestopScreen":
+                                        taskPokestopScreen();
+                                        break;
+                                    case "encounterScreen":
+                                        taskEncounterScreen();
+                                        break;
+                                    case "rewardScreen":
+                                        taskRewardScreen();
+                                        break;
+                                    case "eggScreen":
+                                        taskEggScreen();
+                                        break;
+                                    case "menusScreen":
+                                        taskMenusScreen();
+                                        break;
+                                    default:
+                                        service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
+                                        break;
+                                }
+
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
+        } catch (Throwable t) {
+            CrashLogger.logCrash(t);
+            Log.e(TAG, "ActionLooper CRASHED", t);
         }
-
     }
 
 

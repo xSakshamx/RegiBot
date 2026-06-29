@@ -19,6 +19,8 @@ import java.util.concurrent.Executor;
 
 public class ActionService extends AccessibilityService {
 
+    public static ActionService instance = null;
+
     private final String TAG = "ACTION_SERVICE";
 
     public ActionLooper actionLoop;
@@ -38,6 +40,7 @@ public class ActionService extends AccessibilityService {
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         mainExecutor = this.getMainExecutor();
         mainHandler = new Handler(getMainLooper());
     }
@@ -81,24 +84,22 @@ public class ActionService extends AccessibilityService {
         return START_STICKY;
     }
     private void getScreenSize() {
-        /*
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        Display display = ((WindowManager) getSystemService(WINDOW_SERVICE)).getDefaultDisplay();
-        display.getMetrics(displayMetrics);
+        try {
+            WindowManager windowManager = getSystemService(WindowManager.class);
+            WindowMetrics windowMetrics = windowManager.getCurrentWindowMetrics();
 
-        displayWidth = displayMetrics.widthPixels;
-        displayHeight = displayMetrics.heightPixels;
-        //dpi = displayMetrics.densityDpi;*/
-        WindowManager windowManager = getSystemService(WindowManager.class);
-        WindowMetrics windowMetrics = windowManager.getCurrentWindowMetrics();
+            WindowInsets windowInsets = windowMetrics.getWindowInsets();
+            Insets insets = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars());
 
-        WindowInsets windowInsets = windowMetrics.getWindowInsets();
-        Insets insets = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars());
+            Rect bounds = windowMetrics.getBounds();
 
-        Rect bounds = windowMetrics.getBounds();
-
-        displayWidth = bounds.width() - insets.left - insets.right;
-        displayHeight = bounds.height() - insets.top - insets.bottom;
+            displayWidth = bounds.width() - insets.left - insets.right;
+            displayHeight = bounds.height() - insets.top - insets.bottom;
+        } catch (Exception e) {
+            android.util.DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+            displayWidth = displayMetrics.widthPixels;
+            displayHeight = displayMetrics.heightPixels;
+        }
     }
 
     @Override
@@ -108,8 +109,37 @@ public class ActionService extends AccessibilityService {
 
     @Override
     public void onDestroy() {
+        instance = null;
         super.onDestroy();
         Log.d(TAG,"onDestroy(): stopping self");
+    }
+
+    public void handleAction(String action) {
+        Log.d(TAG, "handleAction(): Action received: " + action);
+        if (action == null) return;
+
+        if (action.equals("play")) {
+            getScreenSize(); // Initialize width, height and dpi
+
+            if (actionLoop == null) actionLoop = new ActionLooper(this);
+            actionLoopThread = new Thread(actionLoop);
+            actionLoopThread.start();
+        } else if (action.equals("pause")) { // Put loop thread on pause, not service
+            Log.d(TAG, "handleAction(): Action Pause");
+            if (actionLoop != null) {
+                actionLoop.pause();
+            }
+        } else if (action.equals("resume")) {
+            Log.d(TAG, "handleAction(): Action Resume");
+            if (actionLoop != null) {
+                actionLoop.resume();
+            }
+        } else if (action.equals("destroy")) {
+            Log.d(TAG, "handleAction(): Action Destroy");
+            if (actionLoop != null) {
+                actionLoop.stop();
+            }
+        }
     }
 
 }

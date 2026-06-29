@@ -39,8 +39,9 @@ public class ModelHandler {
                 modelInterpreter = new Interpreter(loadModelFile(modelName, context));
                 CrashLogger.log("Started Interpreter");
 
-            }catch (Exception e){
+            }catch (Throwable e){
                 Log.e("Interpreter",e.getStackTrace()[0].toString());
+                CrashLogger.log("Predictor ERROR: " + e.toString());
             }
         }
 
@@ -179,9 +180,9 @@ public class ModelHandler {
             CrashLogger.log("Built Detector");
             return new Detector(ObjectDetector.createFromOptions(context, options));
         }
-        catch (Exception e) {
+        catch (Throwable e) {
             Log.e("TAG", "buildDetector ERROR: "+ e.getMessage() );
-
+            CrashLogger.log("buildDetector ERROR: " + e.toString());
             return null;
         }
 
@@ -199,8 +200,9 @@ public class ModelHandler {
                             .build();
             CrashLogger.log("Built Classifier");
             return new Classifier(ImageClassifier.createFromOptions(context, options));
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.e("TAG", "buildClassifier ERROR: "+ e.getMessage() );
+            CrashLogger.log("buildClassifier ERROR: " + e.toString());
             return null;
         }
 
