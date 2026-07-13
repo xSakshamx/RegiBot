@@ -19,11 +19,14 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 
 import com.juancavr6.regibot.R;
 import com.juancavr6.regibot.ui.fragment.HomeFragment;
 
 public class FloatingMenuService extends Service implements View.OnClickListener{
+
+    public static FloatingMenuService instance = null;
 
     private final IBinder mBinder = new LocalBinder();
     Callbacks fragment;
@@ -59,8 +62,9 @@ public class FloatingMenuService extends Service implements View.OnClickListener
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
-        registerReceiver(screenReceiver, filter);
+        ContextCompat.registerReceiver(this, screenReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
     }
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -150,36 +154,44 @@ public class FloatingMenuService extends Service implements View.OnClickListener
 
     @Override
     public void onClick(View v) {
-
-        Intent intent = new Intent(getApplicationContext(), ActionService.class);
         int id = v.getId();
         if (id == R.id.main) {
-            if(isRunning){
-                intent.putExtra("action", "pause");
-            }else{
-                intent.putExtra("action", "resume");
-            }
+            String action = isRunning ? "pause" : "resume";
             isRunning = !isRunning;
             updateMainButton();
-
+            if (ActionService.instance != null) {
+                ActionService.instance.handleAction(action);
+            }
         } else if (id == R.id.destroy) {
             isRunning = false;
             fragment.updateClient(false);
         }
-        getApplication().startService(intent);
     }
 
 
     @Override
     public void onDestroy() {
-
-        Intent intent = new Intent(getApplicationContext(), ActionService.class);
-        intent.putExtra("action", "destroy");
-        getApplication().startService(intent);
+        instance = null;
+        if (ActionService.instance != null) {
+            ActionService.instance.handleAction("destroy");
+        }
 
         super.onDestroy();
         mWindowManager.removeView(myFloatingView);
         unregisterReceiver(screenReceiver);
+    }
+
+    public void onModelsLoaded() {
+        if (loader != null) {
+            loader.setVisibility(View.GONE);
+            mainButton.setVisibility(View.VISIBLE);
+            destroyButton.setVisibility(View.VISIBLE);
+
+            if (fragment != null) {
+                fragment.updateClient(true);
+            }
+            Toast.makeText(this, getString(R.string.displayText_ready), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void updateMainButton() {

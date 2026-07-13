@@ -187,8 +187,11 @@ public class HomeFragment extends Fragment implements FloatingMenuService.Callba
                         context.bindService(floatMenuServiceIntent,mConnection,Context.BIND_AUTO_CREATE);
                         context.startService(floatMenuServiceIntent);
 
-                        actionServiceIntent.putExtra("action","play");
-                        context.startService(actionServiceIntent);
+                        if (ActionService.instance != null) {
+                            ActionService.instance.handleAction("play");
+                        } else {
+                            Toast.makeText(context, "Accessibility Service not running", Toast.LENGTH_SHORT).show();
+                        }
 
                         launchPokemonGoApp();
                         isRunning = true;
