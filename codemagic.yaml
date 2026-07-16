@@ -13,9 +13,24 @@ workflows:
       - name: Set up local.properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          if [ -d "app" ]; then
+            echo "sdk.dir=$ANDROID_SDK_ROOT" > app/local.properties
+          fi
       - name: Build Android APK
         script: |
-          ./gradlew assembleDebug
+          if [ -f ./gradlew ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          elif [ -f ./app/gradlew ]; then
+            cd app
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          elif [ -f ./app/build.gradle ]; then
+            cd app
+            gradle assembleDebug
+          else
+            gradle assembleDebug
+          fi
     artifacts:
       - app/build/outputs/apk/**/*.apk
-      
+      - **/build/outputs/apk/**/*.apk
