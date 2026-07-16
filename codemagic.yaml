@@ -1,0 +1,21 @@
+workflows:
+  android-workflow:
+    name: RegiBot Build
+    max_build_duration: 15
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - android
+      vars:
+        PACKAGE_NAME: "com.juancavr6.regibot"
+      node: latest
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Build Android APK
+        script: |
+          ./gradlew assembleDebug
+    artifacts:
+      - app/build/outputs/apk/**/*.apk
+      
